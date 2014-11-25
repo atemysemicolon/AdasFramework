@@ -3,7 +3,8 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    ../../SuperpixelManager/slicsuperpixel.cpp
 
 
 #OpenCV stuff
@@ -19,4 +20,14 @@ QMAKE_CXXFLAGS += -ltbb
 LIBS += -L/usr/lib/ -lboost_filesystem -lboost_system -lboost_thread
 
 HEADERS += \
-    datamodules.h
+    datamodules.h \
+    PipeCore.h \
+    cvccore.h \
+    ../DatasetReader/datasetReader.h \
+    ../AnnotationManager/annotationManager.h \
+    ../../SuperpixelManager/slicsuperpixel.h \
+    ../../SuperpixelManager/csuperpixel.h \
+    ../../featureManager/featuremanager.h \
+    ../../featureManager/cFeatures.h \
+    ../../fileModule/filemodule.hpp \
+    ../../unaryClassifier/unaryclassifier.h

@@ -1,0 +1,4 @@
+#ifndef FILEMODULE_HPP
+#define FILEMODULE_HPP
+
+#endif // FILEMODULE_HPP

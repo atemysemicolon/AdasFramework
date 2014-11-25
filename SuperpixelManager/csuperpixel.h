@@ -1,0 +1,4 @@
+#ifndef CSUPERPIXEL_H
+#define CSUPERPIXEL_H
+
+#endif // CSUPERPIXEL_H

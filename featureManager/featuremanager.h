@@ -1,0 +1,4 @@
+#ifndef FEATUREMANAGER_H
+#define FEATUREMANAGER_H
+
+#endif // FEATUREMANAGER_H
