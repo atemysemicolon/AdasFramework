@@ -29,7 +29,7 @@ struct ColorRep;
  *
  */
 class SLICSuperpixel {
-protected:
+public:
     Mat clusters; /**< TODO */
     Mat distances; /**< TODO */
     vector<ColorRep> centers; /**< TODO */

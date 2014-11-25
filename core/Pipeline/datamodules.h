@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "../DatasetReader/datasetReader.h"
-#include "../AnnotationManager/annotationManager.h"
+//#include "../AnnotationManager/annotationManager.h"
 
 namespace cvc
 {
@@ -69,6 +69,7 @@ public:
     std::vector<cv::Mat> descriptors_pooled; //Pooled Descriptors for each superpixel /**< TODO */
     cv::Mat descriptors_concat_pooled; //Containing all features /**< TODO */
     std::vector<int> gt_label; //Ground truth label for each row in descriptors_concat_pooled /**< TODO */
+    cv::Mat dictionary;
 
     classdataStruct class_data; /**< TODO */
 
@@ -188,16 +189,16 @@ public:
      * @param cl_data
      * @return bool
      */
-    bool initClassData(std::shared_ptr<ClassData> cl_data)
-    {
-        this->class_data.dataset = cl_data->dataset_name;
-        this->class_data.class_names = cl_data->label_names;
-        this->class_data.class_colours = cl_data->label_colours;
-        this->class_data.number_of_classes = cl_data->label_colours.size();
-        this->class_data.class_map = cl_data->map_indices;
-        this->class_data.exists=true;
+//    bool initClassData(std::shared_ptr<ClassData> cl_data)
+//    {
+//        this->class_data.dataset = cl_data->dataset_name;
+//        this->class_data.class_names = cl_data->label_names;
+//        this->class_data.class_colours = cl_data->label_colours;
+//        this->class_data.number_of_classes = cl_data->label_colours.size();
+//        this->class_data.class_map = cl_data->map_indices;
+//        this->class_data.exists=true;
 
-    }
+//    }
 
     /**
      * @brief
@@ -249,13 +250,38 @@ public:
      * @brief
      *
      */
-    void next()
+    bool next()
+    {
+        int indx;
+        if(index.active_index==TRAIN)
+        {
+               index.train++;
+               indx=index.train;
+        }
+         else if(index.active_index==TEST)
+        {
+               index.test++;
+               indx=index.test;
+        }
+        //Write code to load data from dataset file pair
+
+        return( indx < std::min(files_images.size(), files_labels.size()) );
+
+    }
+
+    void startAgain()
     {
         if(index.active_index==TRAIN)
-               index.train++;
+        {
+               index.train=0;
+
+        }
          else if(index.active_index==TEST)
-               index.test++;
-        //Write code to load data from dataset file pair
+        {
+               index.test=0;
+
+        }
+
     }
 
 

@@ -97,6 +97,11 @@ namespace cvc
 
         }
 
+        virtual void finalOperations(std::shared_ptr<cvc::cData> data)
+        {
+            std::cout<<"Final operation for : "<<this->pipe_name<<std::endl;
+        }
+
     };
 
 
