@@ -3,9 +3,11 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/ml.hpp>
+#include <opencv2/opencv.hpp>
 #include "../core/Pipeline/cvccore.h"
 #include <string>
 #include <utility>
+#include <vector>
 namespace cvc
 {
 enum CLASSIFIER_TYPES {SVM, RTREES};
@@ -19,6 +21,7 @@ enum CLASSIFIER_TYPES {SVM, RTREES};
         cv::Ptr<cv::TrainData> trainingData;
         CLASSIFIER_TYPES classifier_type;
         bool load_descriptors;
+        int number_classes;
 
         unaryClassifier()
         {
@@ -26,10 +29,51 @@ enum CLASSIFIER_TYPES {SVM, RTREES};
             this->data_type=cvc::DataTypes::DATA_SINGLE;
         }
 
-        void initClassifier(CLASSIFIER_TYPES model_types, bool descriptors_to_load)
+        void initClassifier(CLASSIFIER_TYPES model_types, bool descriptors_to_load, int number_classes)
         {
             this->classifier_type = model_types;
             this->load_descriptors = descriptors_to_load;
+            this->number_classes=number_classes;
+        }
+
+        std::vector<float> getGroundTruthStatistics(std::vector<int> &labels, int number_of_classes)
+        {
+            std::vector<float> histogram(number_of_classes, 0);
+            for(int i=0;i<labels.size();i++)
+            {
+                if(labels[i]>=0 && labels[i]<number_of_classes)
+                    histogram[labels[i]]++;
+
+            }
+            long int sum=0;
+            for(int j=0;j<number_of_classes;j++)
+                           sum+=histogram[j];
+
+
+            for(int k=0;k<number_of_classes;k++)
+            {
+                histogram[k]=histogram[k]/sum;
+                std::cout<<histogram[k]<<std::endl;
+            }
+
+            return histogram;
+
+
+        }
+
+        cv::Ptr<cv::TrainData> genTrainingData(cv::Mat &descriptors, std::vector<int> &labels, std::vector<float> &class_weights)
+        {
+            std::vector<float> sample_weights(labels.size(),0.0f);
+            for(int i=0;i<labels.size();i++)
+            {
+                if(labels[i]>=0 &&labels[i]<class_weights.size())
+                    sample_weights[i]=class_weights[labels[i]];
+            }
+
+            cv::Ptr<cv::TrainData> traindt;
+            traindt->s
+
+
         }
 
 
@@ -41,6 +85,8 @@ enum CLASSIFIER_TYPES {SVM, RTREES};
             //Call the right Classifier here
 
         }
+
+
 
         void pushDescriptors(cv::Mat &descriptors, std::vector<int> gt)
         {
@@ -127,6 +173,7 @@ enum CLASSIFIER_TYPES {SVM, RTREES};
 
         void finalOperations(std::shared_ptr<cData> data)
         {
+
             train();
             writeData("descriptors.xml");
 
