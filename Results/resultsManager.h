@@ -1,0 +1,4 @@
+#ifndef RESULTSMANAGER_H
+#define RESULTSMANAGER_H
+
+#endif // RESULTSMANAGER_H
