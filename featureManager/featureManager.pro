@@ -3,7 +3,9 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    LBP/histogram.cpp \
+    LBP/lbp.cpp
 
 #OpenCV stuff
 LIBS += `pkg-config opencv --libs`

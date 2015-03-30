@@ -43,7 +43,7 @@ namespace cvc
                     temp_index = clusters.at<int>(y,x);
                     if(temp_index==superpixel_index)
                     {
-                        cv::Point pt(y,x);
+                        cv::Point pt(x,y);
                         p.push_back(pt);
                     }
                 }

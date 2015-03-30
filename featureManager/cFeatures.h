@@ -50,7 +50,7 @@ public:
                 temp_index = superpixels.at<int>(y,x);
                 if(temp_index==superpixel_index)
                 {
-                    cv::Point pt(y,x);
+                    cv::Point pt(x,y);
                     p.push_back(pt);
                 }
             }

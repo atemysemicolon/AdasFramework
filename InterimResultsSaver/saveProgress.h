@@ -37,12 +37,20 @@ namespace cvc
 
             std::string filename_sup = local_filename + "_sup.xml";
             std::string filename_desc = local_filename + "_desc.xml";
+            std::string filename_ann = local_filename + "_ann.xml";
+            std::string filename_img = local_filename + "_im.xml";
 
             std::cout<<"\t Writing superpixels to "<<(this->folder_dump+filename_sup)<<std::endl;
             writeSegments(data->superpixel_segments,this->folder_dump+filename_sup);
 
             std::cout<<"\t Writing Descriptors to "<<(this->folder_dump+filename_desc)<<std::endl;
             writeDescriptors(data->descriptors_concat_pooled,this->folder_dump+filename_desc);
+
+            std::cout<<"\t Writing Annotations to "<<(this->folder_dump+filename_ann)<<std::endl;
+            writeMat(data->annotation_indexed,this->folder_dump+filename_ann, "Ann");
+
+            std::cout<<"\t Writing Images to "<<(this->folder_dump+filename_img)<<std::endl;
+            writeMat(data->annotation_indexed,this->folder_dump+filename_img, "Img");
 
         }
 
@@ -67,6 +75,20 @@ namespace cvc
                 return false;
 
             fs<<"Descriptors"<<descriptors;
+
+            fs.release();
+            return true;
+
+        }
+
+
+        bool writeMat(cv::Mat &descriptors, std::string filename_out, std::string field)
+        {
+            cv::FileStorage fs(filename_out, cv::FileStorage::WRITE);
+            if(!fs.isOpened())
+                return false;
+
+            fs<<field<<descriptors;
 
             fs.release();
             return true;

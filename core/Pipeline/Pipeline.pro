@@ -4,7 +4,9 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += main.cpp \
-    ../../SuperpixelManager/slicsuperpixel.cpp
+    ../../SuperpixelManager/slicsuperpixel.cpp \
+    ../../featureManager/LBP/histogram.cpp \
+    ../../featureManager/LBP/lbp.cpp
 
 
 #OpenCV stuff
@@ -34,7 +36,9 @@ HEADERS += \
     ../../Results/resultsManager.h \
     ../../preProcesing/preprocessing.h \
     ../../unaryPotential/linearClassifier.h \
-    ../../InterimResultsSaver/saveProgress.h
+    ../../InterimResultsSaver/saveProgress.h \
+    ../../featureManager/LBP/histogram.hpp \
+    ../../featureManager/LBP/lbp.hpp
 
 
 # remove possible other optimization flags

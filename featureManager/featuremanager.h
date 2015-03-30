@@ -91,8 +91,8 @@ public:
             for(int i=0;i<this->features_ptr.size();i++)
             {
                 this->features_ptr[i]->calculateDescriptors(img, segments);
-                std::cout<<"Dimensions of descriptor - "<<this->features_ptr[i]->descriptors.rows<<", "
-                <<this->features_ptr[i]->descriptors.cols<<std::endl;
+                //std::cout<<"Dimensions of descriptor - "<<this->features_ptr[i]->descriptors.rows<<", "
+                //<<this->features_ptr[i]->descriptors.cols<<std::endl;
             }
 
         else
@@ -142,6 +142,12 @@ public:
             data->descriptors_concat_pooled = this->descriptors_concatenated.clone();
         }
 
+
+    }
+
+    void finalOperations(std::shared_ptr<cvc::cData> data)
+    {
+        std::cout<<"Final operation for : "<<this->pipe_name<<std::endl;
 
     }
 
