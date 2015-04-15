@@ -1,0 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Apr 13 20:13:49 2015
+
+@author: prassanna
+"""
+
+Framework c++ D
+train_unaries D
+test_unaries D
+
+Things to do
+prob_train
+prob_test
+train_crf
+test_crf

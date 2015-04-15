@@ -313,6 +313,7 @@ public:
     {
         if(this->exists(0))
         {
+
             data_new.annotation_orig = cv::imread(this->files_labels[index.currentIndex()]);
             data_new.image = cv::imread(this->files_images[index.currentIndex()]);
             data_new.data_type = DATA_SINGLE;

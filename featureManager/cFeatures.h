@@ -27,19 +27,70 @@ class cFeatures
 {
 public:
     
-    cv::Mat descriptors;
-    cv::Mat descriptors_all;
+    cv::Mat descriptors; //descriptors of one image
+    cv::Mat descriptors_all; //Across all images in dataset-Not concatenated features!
     int length;
     int repeat;
     cv::Mat dictionary;
     int nr_clusters;
     cv::Ptr<cv::DescriptorMatcher> flannMatcher;
     int nr_superpixels;
-
+    std::string ftname;
 
     
 
     //##############Utility Functions - Remove from inline later#####
+
+    //Move later to FileModule class
+    bool saveDescriptors(const std::string file_name)
+    {
+        //std::string new_file_name = file_name+"_"+std::to_string(feature_number);
+        std::string fieldnm= "Descriptor";
+        return saveMat(file_name, fieldnm, this->descriptors);
+
+    }
+    bool saveDictionary(const std::string file_name)
+    {
+        //std::string new_file_name = file_name+"_"+std::to_string(feature_number);
+        std::string fieldnm= "Dictionary";
+        return saveMat(file_name, fieldnm, this->dictionary);
+
+    }
+    bool loadDescriptors(const std::string file_name)
+    {
+        //std::string new_file_name = file_name+"_"+std::to_string(feature_number);
+        std::string fieldnm= "Descriptor";
+        this->descriptors = loadMat(file_name, fieldnm);
+        return !this->descriptors.empty();
+    }
+    bool loadDictionary(const std::string file_name)
+    {
+
+        //std::string new_file_name = file_name+"_"+std::to_string(feature_number);
+        std::string fieldnm= "Dictionary";
+        this->dictionary = loadMat(file_name, fieldnm);
+        return !this->dictionary.empty();
+    }
+    bool saveMat(const std::string &file_name, const std::string &field_name, const cv::Mat &mat_obj)
+    {
+        cv::FileStorage fs(file_name, cv::FileStorage::WRITE);
+        if(!fs.isOpened())
+            return false;
+        fs<<field_name<<mat_obj;
+        fs.release();
+        return true;
+    }
+    cv::Mat loadMat(const std::string &file_name, const std::string &field_name)
+    {
+        cv::FileStorage fs(file_name,cv::FileStorage::READ);
+        cv::Mat m;
+        if(!fs.isOpened())
+            return m.clone();
+        fs[field_name]>>m;
+        fs.release();
+        return m.clone();
+    }
+
     std::vector<Point> getPositions(const int& superpixel_index, const cv::Mat &superpixels)
     {
         std::vector<cv::Point> p;
@@ -78,6 +129,12 @@ public:
         this->nr_superpixels = max+1;
     }
 
+
+
+
+
+
+
     //######### END Utility Functions ##########
 
     
@@ -114,10 +171,12 @@ public:
 
     cv::Mat encodeDescriptor(const cv::Mat &descriptor)
     {
-        
-        cv::Mat desc_uncoded;        
+        if(this->flannMatcher.empty())
+            this->flannMatcher=cv::Ptr<cv::DescriptorMatcher>(new cv::FlannBasedMatcher);
+
+        cv::Mat desc_uncoded;//=descriptor;
         descriptor.convertTo(desc_uncoded, CV_32FC1);
-        cv::Mat codedDescriptor;
+        //cv::Mat codedDescriptor;
 
 
         if( this->dictionary.empty() )
@@ -129,8 +188,9 @@ public:
 
         std::vector<cv::DMatch> matches;
         this->flannMatcher->match( desc_uncoded, this->dictionary, matches );
-        cv::Mat imgDescriptor;
-        imgDescriptor.create(1, this->dictionary.rows, CV_32FC1);
+
+
+        cv::Mat imgDescriptor(1, this->dictionary.rows, CV_32FC1);
         imgDescriptor.setTo(cv::Scalar::all(0));
         float *dptr = imgDescriptor.ptr<float>();
         for( size_t i = 0; i < matches.size(); i++ )
@@ -168,9 +228,9 @@ public:
 
     
 
-    virtual void calculateDescriptors(const cv::Mat &img, const cv::Mat &segments){}
-    virtual void calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments) {}
-    virtual void loadDescriptorsFromFile(std::string file) {}
+    virtual int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments){}
+    virtual int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments) {}
+    virtual int loadDescriptorsFromFile(std::string file) {}
 
 };
 
@@ -192,6 +252,7 @@ public:
         detector = cv::Ptr<cv::FeatureDetector>(new cv::DenseFeatureDetector);
         extractor = cv::Ptr<cv::DescriptorExtractor>(new cv::SiftDescriptorExtractor); //Opencv2
         this->length = 128;
+        this->ftname = "SIFT";
 
     }
     ~SiftDescriptor()
@@ -221,7 +282,7 @@ public:
     cv::Mat calculateSuperpixelDescriptor(const cv::Mat &superpixels, const int superpixel_index)
     {
 
-        cv::Mat desc = cv::Mat::zeros(1,this->denseDescriptor.cols, this->denseDescriptor.type());
+        cv::Mat desc;// = cv::Mat::zeros(1,this->denseDescriptor.cols, this->denseDescriptor.type());
         cv::Point pt;
         int counter = 0;
         //Iterate through all keypoints to see which ones belong to sup 'n'
@@ -233,9 +294,9 @@ public:
             if(superpixels.at<int>(pt) == superpixel_index)
             {
                 if(desc.empty())
-                    desc  = this->denseDescriptor.row(i).clone();
+                    desc  = this->denseDescriptor.row(i);
                 else
-                    desc.push_back(denseDescriptor.row(i).clone());
+                    desc.push_back(denseDescriptor.row(i));
                
             }
 
@@ -248,60 +309,74 @@ public:
 
     
 
-    void calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+    int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
     {
         
-        cv::Mat superpixels;
+        cv::Mat superpixels=segments;
         cv::Mat desc_all;
 
         cFeatures::loadSuperpixelCount(segments);
         calculateDenseDescriptor(img);
-        segments.convertTo(superpixels, CV_32SC1);
+        //segments.convertTo(superpixels, CV_32SC1);
 
         //Iterating through all superpixels
         for (int n = 0;n<this->nr_superpixels;n++)
         {
+
             cv::Mat d = calculateSuperpixelDescriptor(segments, n);            
+            if(d.empty())
+                d=cv::Mat::zeros(2, denseDescriptor.cols, CV_32FC1);
             cv::Mat desc = meanDescriptor(d);
 
             if(desc_all.empty())
-                desc_all=desc.clone();
+                desc_all=desc;
             else
-                desc_all.push_back(desc.clone());
+                desc_all.push_back(desc);
+
+            desc.release();
+            d.release();
 
         }
         //cout<<desc;
 
         this->descriptors = desc_all.clone();
+        desc_all.release();
+        superpixels.release();
+        return this->descriptors.rows;
 
         //Get desc per superpixel
     }
 
 
-    void calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments) 
+    int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments)
     {
+        //std::cout<<"\tEncoding Sift..."<<std::endl;
         calculateDenseDescriptor(img);
         cFeatures::loadSuperpixelCount(segments);
 
         cv::Mat superpixels;
         segments.convertTo(superpixels, CV_32SC1);
 
-        cv::Mat desc_all;
+        cv::Mat desc_all=cv::Mat::zeros(this->nr_superpixels, this->dictionary.rows, CV_32FC1);
+
         //Iterating through all superpixels
         for (int n = 0;n<this->nr_superpixels;n++)
         {
              cv::Mat d = calculateSuperpixelDescriptor(segments, n);            
-            cv::Mat desc = encodeDescriptor(d);
+             cv::Mat m = encodeDescriptor(d);
+             m.copyTo(desc_all.row(n));
+             //std::cout<<m<<std::endl;
 
-            if(desc_all.empty())
-                desc_all=desc.clone();
-            else
-                desc_all.push_back(desc.clone());
-
+            d.release();
         }
-        //cout<<desc;
+
+        //std::cout<<desc_all<<std::endl;
 
         this->descriptors = desc_all.clone();
+        desc_all.release();
+        superpixels.release();
+        //std::cout<<"\tDone!"<<std::endl;
+        return this->descriptors.rows;
 
     }
 
@@ -314,8 +389,9 @@ public:
     ColorDescriptor()
     {
         this->length = 3;
+        this->ftname = "Color";
     }
-    void calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+    int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
     {
         cFeatures::loadSuperpixelCount(segments);
         cv::Mat descriptor;
@@ -354,15 +430,19 @@ public:
 
 
         this->descriptors =  descriptor.clone();
+        descriptor.release();
+        img_conv.release();
+        return this->descriptors.rows;
 
     }
 
-    void calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments) 
+    int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments)
     {
         cFeatures::loadSuperpixelCount(segments);
-        cv::Mat descriptor;
+        cv::Mat descriptor=cv::Mat::zeros(this->nr_superpixels, this->dictionary.rows, CV_32FC1);
         cv::Mat img_conv;
         cv::cvtColor(img, img_conv, CV_BGR2Lab);
+
 
         for(int i=0;i<this->nr_superpixels;i++)
         {
@@ -378,18 +458,19 @@ public:
                 desc.at<float>(c,2) = colour[2]/pts.size();
             }
 
-            cv::Mat desc_mean = encodeDescriptor(desc);
-            
 
-            if(descriptor.empty())
-                descriptor = desc_mean;
-            else
-                descriptor.push_back(desc_mean);
+            cv::Mat m = encodeDescriptor(desc);
+
+            m.copyTo(descriptor.row(i));
 
         }
 
 
         this->descriptors =  descriptor.clone();
+        descriptor.release();
+        img_conv.release();
+        //std::cout<<this->descriptors<<std::endl;
+        return this->descriptors.rows;
 
     }
 
@@ -402,8 +483,9 @@ public:
     LocationDescriptor()
     {
         this->length = 2;
+        this->ftname = "Location";
     }
-    void calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+    int  calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
     {
         cFeatures::loadSuperpixelCount(segments);
         cv::Mat descriptor;
@@ -415,12 +497,11 @@ public:
             
             std::vector<cv::Point> pts = getPositions(i, segments);
             cv::Mat desc = cv::Mat::zeros(pts.size(),2,CV_32F);
-            cv::Vec3i colour;
             for(int c=0;c<pts.size();c++)
             {
                 
-                desc.at<float>(c,0) = pts[c].x/img.cols;
-                desc.at<float>(c,1) = pts[c].y/img.rows;
+                desc.at<float>(c,0) = (float)pts[c].x/img.cols;
+                desc.at<float>(c,1) = (float)pts[c].y/img.rows;
                 
             }
 
@@ -435,12 +516,17 @@ public:
 
 
         this->descriptors =  descriptor.clone();
+        descriptor.release();
+        img_conv.release();
+        return this->descriptors.rows;
+
 
     }
-    void calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments) 
+    int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments)
     {
+        std::cout<<"\tEncoding Colour..."<<std::endl;
         cFeatures::loadSuperpixelCount(segments);
-        cv::Mat descriptor;
+        cv::Mat descriptor=cv::Mat::zeros(this->nr_superpixels, this->dictionary.rows, CV_32FC1);
         cv::Mat img_conv;
         cv::cvtColor(img, img_conv, CV_BGR2Lab);
 
@@ -458,17 +544,22 @@ public:
                 
             }
 
-            cv::Mat desc_mean = encodeDescriptor(desc);
+
          
-            if(descriptor.empty())
-                descriptor = desc_mean;
-            else
-                descriptor.push_back(desc_mean);
+            cv::Mat m= encodeDescriptor(desc);
+            m.copyTo(descriptor.row(i));
+            //std::cout<<m<<std::endl;
+
+
 
         }
 
 
         this->descriptors =  descriptor.clone();
+        descriptor.release();
+        img_conv.release();
+        std::cout<<"\tDone!"<<std::endl;
+        return this->descriptors.rows;
     }
     
 };
@@ -480,160 +571,374 @@ class LBPDescriptor : public cFeatures
         LBPDescriptor()
         {
             this->length = 256; //or255 last one could be zero-np
+            this->ftname = "LBP";
+        }
+        bool withinRange(const cv::Mat &img, const cv::Point &p)
+        {
+            if(p.x<img.cols && p.x>= 0 && p.y< img.rows && p.y >=0)
+                return true;
+            return false;
         }
 
         cv::Mat feature_lbp(const cv::Mat &img)
         {
-            int radius = 1;
-            int neighbors = 8;
+            cv::Mat lbp_im;
             cv::Mat dst;
-            cv::Mat lbp;
-            cvtColor(img, dst, cv::COLOR_BGR2GRAY);
-            dst.convertTo(dst, CV_32SC1); //Converting to <int>
-            lbp::ELBP(dst, lbp, radius, neighbors);
-            normalize(lbp, lbp, 0, 255, NORM_MINMAX, CV_8UC1);
-            return lbp.clone();
+            cv::cvtColor(img,dst, CV_BGR2GRAY);
+            int radius=1;
+            lbp::ELBP(dst,lbp_im, radius);
+            normalize(lbp_im, lbp_im, 0, 255, NORM_MINMAX, CV_8UC1);
+            return lbp_im.clone();
         }
-
-        cv::Mat feature_lbp_cluster(const cv::Mat &lbp_img, const cv::Mat &superpixels)
+        cv::Mat genDescriptorPtLbp(const cv::Point &p, const cv::Mat &lbp_image)
         {
-            
+            //Lbp Image is smaller than image
+            const int dx[8] = { -1, -1, 0, 1, 1, 1, 0, -1 };
+            const int dy[8] = { 0, -1, -1, -1, 0, 1, 1, 1 };
 
-            cv::Mat descriptor;
+            cv::Mat desc = cv::Mat::zeros(1,256, CV_32FC1);
 
-            float avg_superpixel_size  = (lbp_img.cols*lbp_img.rows)/this->nr_superpixels;
-
-
-            for(int i=0;i<this->nr_superpixels;i++)
+            //Iterate through 8-nbrhood and create descriptor
+            for(int i=0;i<8;i++)
             {
-                std::vector<cv::Point> pts = getPositions(i, superpixels);
-                
-                std::vector<uchar> histogram(100,0);
-                cv::Mat desc = cv::Mat::zeros(pts.size(),this->length, CV_32FC1);
-
-               for( int p=0; p<pts.size(); ++p )
+                cv::Point compare_pt = p-cv::Point(dx[i],dy[i]);
+                if(withinRange(lbp_image, compare_pt))
                 {
-                    int pixel_value = lbp_img.at<uchar>(pts[p]);
-                    desc.at<float>(p, pixel_value) += 1.0f;
+                    int lbp_label = lbp_image.at<uchar>(compare_pt);
+                    desc.at<float>(0,lbp_label)+=1.0f;
                 }
-                cv::Mat desc_mean = meanDescriptor(desc);
-
-                if(descriptor.empty())
-                    descriptor = desc_mean.clone();
-                else
-                    descriptor.push_back(desc_mean);
-
             }
 
-            descriptor = descriptor / (avg_superpixel_size);
-            return descriptor.clone();
+            return desc.clone();
         }
-
-        cv::Mat feature_lbp_grid(const cv::Mat &lbp_image)
+        cv::Mat genSuperpixelDescriptorLbp(std::vector<cv::Point> &pts, const cv::Mat &segments, const cv::Mat &lbp_image)
         {
-            cv::Mat descriptor;
-            int dx[9] = {0, -1, -1, 0, 1, 1, 1, 0, -1 };
-            int dy[9] = {0, 0, -1, -1, -1, 0, 1, 1, 1 };
-
-            cv::Mat lbp;
-            lbp_image.convertTo(lbp, CV_32F);
-
-            for(int r = 0;r<lbp.rows; r++)
-                for(int c=0;c<lbp.cols;c++)
-                {
-                    int p=0;
-                    std::vector<float> values;
-                    cv::Mat desc = cv::Mat::zeros(1,255,CV_32F);
-                    //Iterate through GRID
-                    for (int i =0 ;i< 9;i++)
-                    {
-                        if(withinRange(c+dx[i], r+dy[i], lbp) && lbp.at<float>(c+dx[i],r+dy[i])< 256)
-                            values.push_back(lbp.at<float>(c+dx[i],r+dy[i]));
-
-                    }
-
-                    //Iterate through Vector
-                    for(int i=0;i<values.size();i++)
-                    {
-
-                        int v = values[i];
-                        desc.at<float>(0,v) +=1;
-                    }
-
-                    if(descriptor.empty())
-                        descriptor=desc.clone();
-                    else
-                        descriptor.push_back(desc);
-
-                }
-            return descriptor.clone();
-
-        }
-        cv::Mat feature_lbp_codify(const cv::Mat &lbp_grid_features, const cv::Mat &superpixels)
-        {
-
-            cv::Mat descriptor;
-            std::cout<<"LBP grid feature size : "<<lbp_grid_features.rows<<", "<<lbp_grid_features.cols<<std::endl;
-            for(int i=0;i<this->nr_superpixels;i++)
+            //Need to simple transformation as points on image!=pts on lbp image
+            std::vector<cv::Point> lbp_pts;
+            //Holds difference
+            cv::Point p;
+            p.x=1;
+            p.y=1;
+            for(auto pt : pts)
             {
-                //std::cout<<"Encoding superpixel : "<<i<<std::endl;
-                std::vector<cv::Point> pos = getPositions(i, superpixels);
-                //std::cout<<"Nr pixels : "<<pos.size()<<std::endl;
-                cv::Mat desc;
-                for(int p = 0; p<pos.size();p++)
-                {
-                    
-
-                    //Encoding point to row index which will hold descriptor
-                    int index = (pos[p].y*superpixels.cols + pos[p].x);
-                    if(index>=lbp_grid_features.rows)
-                    {
-                        //std::cout<<"Out OF RANGE - Index: "<<index<<" -Point : "<<pos[p]<<std::endl;
-                        continue;
-                    }
-                    else
-                        //std::cout<<"Reading from LBP grid..."<<p<<" -> i :"<<index<<std::endl;
-                    if(desc.empty())
-                        desc = lbp_grid_features.row(index).clone();
-                    else
-                    {
-                        desc.push_back(lbp_grid_features.row(index).clone());
-                        //std::cout<<"Pusing onto descriptor - "<<desc.rows<<std::endl;
-                    }
-
-
-
-                }
-                //std::cout<<"Accumulated descriptors...."<<std::endl;
-
-                cv::Mat desc_coded = encodeDescriptor(desc);
-                if(descriptor.empty())
-                    descriptor=desc_coded.clone();
-                else
-                    descriptor.push_back(desc_coded.clone());
+                cv::Point lbp_pt = pt-p;
+                if(withinRange(lbp_image, lbp_pt))
+                    lbp_pts.push_back(lbp_pt);
 
             }
-
-            return descriptor.clone();
+            cv::Mat superpixel_desc;
+            for (auto pt : lbp_pts)
+                superpixel_desc.push_back(genDescriptorPtLbp(pt, lbp_image));
+            return superpixel_desc.clone();
         }
 
-        void calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+
+        int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
         {
+
+//            cFeatures::loadSuperpixelCount(segments);
+//            cv::Mat lbp = feature_lbp(img);
+//            this->descriptors = feature_lbp_cluster(lbp, segments);
+//            lbp.release();
+//            return this->descriptors.rows;
+
             cFeatures::loadSuperpixelCount(segments);
-            cv::Mat lbp = feature_lbp(img);
-            this->descriptors = feature_lbp_cluster(lbp, segments);
+
+            //LBP Image
+            cv::Mat lbp_im = feature_lbp(img);
+
+
+            cv::Mat desc = cv::Mat::zeros(this->nr_superpixels, 256, CV_32FC1);
+            //LBP Descriptor
+            for(int i =0;i<this->nr_superpixels;i++)
+            {
+                std::vector<cv::Point> pts;
+                pts = getPositions(i, segments);
+                cv::Mat d = genSuperpixelDescriptorLbp(pts,segments, lbp_im);
+                if(d.empty())
+                    d=cv::Mat::zeros(1, 256, CV_32FC1);
+                cv::Mat superpixel_desc = this->meanDescriptor(d);
+                superpixel_desc.copyTo(desc.row(i));
+            }
+
+            this->descriptors = desc.clone();
+            desc.release();
+            lbp_im.release();
+            return this->descriptors.rows;
 
         }
 
-        void calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments) 
+        int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments)
         {
             cFeatures::loadSuperpixelCount(segments);
-            cv::Mat lbp = feature_lbp(img);
-            cv::Mat lbp_grid = feature_lbp_grid(lbp);
-            this->descriptors = feature_lbp_codify(lbp_grid,segments);
+
+            //LBP Image
+            cv::Mat lbp_im = feature_lbp(img);
+
+
+            cv::Mat desc = cv::Mat::zeros(this->nr_superpixels, this->dictionary.rows, CV_32FC1);
+            //LBP Descriptor
+            for(int i =0;i<this->nr_superpixels;i++)
+            {
+                std::vector<cv::Point> pts = getPositions(i, segments);
+                cv::Mat d = genSuperpixelDescriptorLbp(pts,segments, lbp_im);
+                if(d.empty())
+                    d=cv::Mat::zeros(1, 256, CV_32FC1);
+                cv::Mat superpixel_desc = this->encodeDescriptor(d);
+                //std::cout<<superpixel_desc<<std::endl; //Debugging
+                superpixel_desc.copyTo(desc.row(i));
+            }
+
+            this->descriptors = desc.clone();
+            desc.release();
+            lbp_im.release();
+            return this->descriptors.rows;
         }
 
     
+
+};
+
+class HOGDescriptor: public cFeatures
+{
+
+public:
+    cv::Mat desc_hog;
+    HOGDescriptor()
+    {
+        this->length=9;//?
+        this->ftname = "HOG";
+
+    }
+    ~HOGDescriptor()
+    {
+
+    }
+    //Utility
+    void getPositionsAndCells(int superpixel_index, const cv::Mat &segments, std::vector<cv::Point> &p, std::vector<int> &p_x_map, std::vector<int> &p_y_map, const int cell_width_x, const int cell_width_y)
+    {
+        int temp_index = 0;
+        for(int y=0;y<segments.rows;y++)
+            for(int x=0;x<segments.cols;x++)
+            {
+                temp_index = segments.at<int>(y,x);
+                if(temp_index==superpixel_index)
+                {
+                    cv::Point pt(x,y);
+                    p.push_back(pt);
+                    p_x_map.push_back((int)x/cell_width_x);
+                    p_y_map.push_back((int)y/cell_width_y);
+                }
+            }
+        //return p;
+    }
+
+    cv::Mat genDescriptorSingleHog(const cv::Mat &segments, const cv::Mat &descriptors_hog, int n_superpixel, int cell_width_x, int cell_width_y)
+    {
+       std::vector<cv::Point> pts;
+       std::vector<int> cell_map_x;
+       std::vector<int> cell_map_y;
+       getPositionsAndCells(n_superpixel,segments, pts,cell_map_x,cell_map_y,cell_width_x,cell_width_y);
+       cv::Mat desc=cv::Mat::zeros(pts.size(), 9, CV_32FC1);
+       for(int i=0;i<pts.size();i++)
+       {
+           //std::cout<<pts[i]<<"->"<<cell_map_x[i]<<","<<cell_map_y[i]<<std::endl;
+           cv::Mat tempDesc = descriptors_hog.row(cell_map_y[i]*cell_width_x + cell_map_x[i]);
+           //std::cout<<tempDesc<<endl;
+           //cin.get();
+           if(!tempDesc.empty())
+            tempDesc.copyTo(desc.row(i));
+       }
+
+       return desc.clone();
+    }
+
+
+    //Unencoded descriptor
+    void convertToHOGDescriptor(const Mat& color_origImg, vector<float>& descriptorValues, const Size & size, cv::Mat &desc, int cellSize )
+    {
+        const int DIMX = size.width;
+        const int DIMY = size.height;
+        float zoomFac = 1.5;
+        //Mat visu;
+        //resize(color_origImg, visu, Size( (int)(color_origImg.cols*zoomFac), (int)(color_origImg.rows*zoomFac) ) );
+
+        //int cellSize        = 8;
+        int gradientBinSize = 9;
+        //float radRangeForOneBin = (float)(CV_PI/(float)gradientBinSize); // dividing 180 into 9 bins, how large (in rad) is one bin?
+
+        // prepare data structure: 9 orientation / gradient strenghts for each cell
+        int cells_in_x_dir = DIMX / cellSize;
+        int cells_in_y_dir = DIMY / cellSize;
+        float*** gradientStrengths = new float**[cells_in_y_dir];
+        int** cellUpdateCounter   = new int*[cells_in_y_dir];
+        for (int y=0; y<cells_in_y_dir; y++)
+        {
+            gradientStrengths[y] = new float*[cells_in_x_dir];
+            cellUpdateCounter[y] = new int[cells_in_x_dir];
+            for (int x=0; x<cells_in_x_dir; x++)
+            {
+                gradientStrengths[y][x] = new float[gradientBinSize];
+                cellUpdateCounter[y][x] = 0;
+
+                for (int bin=0; bin<gradientBinSize; bin++)
+                    gradientStrengths[y][x][bin] = 0.0;
+            }
+        }
+
+        // nr of blocks = nr of cells - 1
+        // since there is a new block on each cell (overlapping blocks!) but the last one
+        int blocks_in_x_dir = cells_in_x_dir - 1;
+        int blocks_in_y_dir = cells_in_y_dir - 1;
+
+        // compute gradient strengths per cell
+        int descriptorDataIdx = 0;
+        int cellx = 0;
+        int celly = 0;
+
+        for (int blockx=0; blockx<blocks_in_x_dir; blockx++)
+        {
+            for (int blocky=0; blocky<blocks_in_y_dir; blocky++)
+            {
+                // 4 cells per block ...
+                for (int cellNr=0; cellNr<4; cellNr++)
+                {
+                    // compute corresponding cell nr
+                    cellx = blockx;
+                    celly = blocky;
+                    if (cellNr==1) celly++;
+                    if (cellNr==2) cellx++;
+                    if (cellNr==3)
+                    {
+                        cellx++;
+                        celly++;
+                    }
+
+                    for (int bin=0; bin<gradientBinSize; bin++)
+                    {
+                        float gradientStrength = descriptorValues[ descriptorDataIdx ];
+                        descriptorDataIdx++;
+
+                        gradientStrengths[celly][cellx][bin] += gradientStrength;
+
+                    } // for (all bins)
+
+
+                    // note: overlapping blocks lead to multiple updates of this sum!
+                    // we therefore keep track how often a cell was updated,
+                    // to compute average gradient strengths
+                    cellUpdateCounter[celly][cellx]++;
+
+                } // for (all cells)
+
+
+            } // for (all block x pos)
+        } // for (all block y pos)
+
+        desc = cv::Mat::zeros(cells_in_y_dir*cells_in_x_dir, 9, CV_32FC1);
+
+        // compute average gradient strengths
+        for (celly=0; celly<cells_in_y_dir; celly++)
+        {
+            for (cellx=0; cellx<cells_in_x_dir; cellx++)
+            {
+
+                float NrUpdatesForThisCell = (float)cellUpdateCounter[celly][cellx];
+
+                // compute average gradient strenghts for each gradient bin direction
+                for (int bin=0; bin<gradientBinSize; bin++)
+                {
+                    gradientStrengths[celly][cellx][bin] /= NrUpdatesForThisCell;
+                    desc.at<float>(celly*cells_in_x_dir + cellx,bin) = gradientStrengths[celly][cellx][bin];
+                }
+            }
+        }
+
+        //cout<<"Stuff:"<<desc<<std::endl;
+
+
+
+
+
+        // don't forget to free memory allocated by helper data structures!
+        for (int y=0; y<cells_in_y_dir; y++)
+        {
+            for (int x=0; x<cells_in_x_dir; x++)
+            {
+                delete[] gradientStrengths[y][x];
+            }
+            delete[] gradientStrengths[y];
+            delete[] cellUpdateCounter[y];
+        }
+        delete[] gradientStrengths;
+        delete[] cellUpdateCounter;
+
+        //return desc.clone();
+
+    }
+
+    void calculateGradients(const cv::Mat &img, const cv::Mat &segments)
+    {
+        cv::Mat img_gray;
+        cv::cvtColor(img, img_gray, CV_RGB2GRAY);
+        cv::HOGDescriptor hog;
+        std::vector<float> descriptorsValues;
+        std::vector<Point> locations;
+
+        hog.compute( img_gray, descriptorsValues, Size(0,0), Size(0,0), locations);
+        hog.cellSize=Size(2,2);
+
+        //std::cout << "HOG descriptor size is " << hog.getDescriptorSize() << std::endl;
+        //std::cout << "img dimensions: " << img.cols << " width x " << img.rows << "height" << std::endl;
+        //std::cout << "Found " << descriptorsValues.size() << " descriptor values" << std::endl;
+        //std::cout << "Nr of locations specified : " << locations.size() << std::endl;
+
+
+        convertToHOGDescriptor(img,descriptorsValues, cv::Size(img.cols, img.rows), desc_hog, hog.cellSize.height);
+
+        //genDescriptorSingleHog(img, segments, desc, 2, 8,8);
+    }
+    int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+    {
+        //Calculates HOG image and reshapes as descriptors
+        cFeatures::loadSuperpixelCount(segments);
+        calculateGradients(img, segments);
+        //int nr_superpixels = 1000;//Change!!
+        cv::Mat desc_all = cv::Mat::zeros(this->nr_superpixels, 9,CV_32FC1);
+        for(int i=0;i<this->nr_superpixels;i++)
+        {
+            cv::Mat d = genDescriptorSingleHog(segments, desc_hog, i, 8,8);
+            cv::Mat d_sum = this->meanDescriptor(d);
+            if(!d_sum.empty())
+                d_sum.copyTo(desc_all.row(i));
+        }
+
+        this->descriptors = desc_all.clone();
+        desc_all.release();
+        return this->descriptors.rows;
+    }
+
+    int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments)
+    {
+        //Calculates HOG image and reshapes as descriptors
+        cFeatures::loadSuperpixelCount(segments);
+        calculateGradients(img, segments);
+        //int nr_superpixels = 1000;//Change!!
+        cv::Mat desc_all = cv::Mat::zeros(this->nr_superpixels, this->dictionary.rows,CV_32FC1);
+        for(int i=0;i<this->nr_superpixels;i++)
+        {
+            cv::Mat d = genDescriptorSingleHog(segments, desc_hog, i, 8,8);
+            cv::Mat d_sum = this->encodeDescriptor(d);
+            if(!d_sum.empty())
+                d_sum.copyTo(desc_all.row(i));
+        }
+
+        this->descriptors = desc_all.clone();
+        desc_all.release();
+        return this->descriptors.rows;
+
+    }
+
 
 };
 
@@ -650,11 +955,13 @@ public:
 
     }
 
-    void loadDescriptorsFromFile(std::string file)
+    int loadDescriptorsFromFile(std::string file)
     {
+        return 0;
 
     }
 };
+
 
 }
 

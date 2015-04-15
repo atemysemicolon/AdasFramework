@@ -21,7 +21,12 @@ namespace cvc
         {
             this->data_type = DATA_SINGLE;
             this->pipe_name = "SaveIntermediateResults";
-            this->folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump2/";
+
+        }
+
+        void initFolderLocation(const std::string &folder_name)
+        {
+            this->folder_dump = folder_name;
         }
 
 
@@ -39,6 +44,7 @@ namespace cvc
             std::string filename_desc = local_filename + "_desc.xml";
             std::string filename_ann = local_filename + "_ann.xml";
             std::string filename_img = local_filename + "_im.xml";
+            std::string filename_nbr = local_filename + "_nbrs.xml";
 
             std::cout<<"\t Writing superpixels to "<<(this->folder_dump+filename_sup)<<std::endl;
             writeSegments(data->superpixel_segments,this->folder_dump+filename_sup);
@@ -46,11 +52,23 @@ namespace cvc
             std::cout<<"\t Writing Descriptors to "<<(this->folder_dump+filename_desc)<<std::endl;
             writeDescriptors(data->descriptors_concat_pooled,this->folder_dump+filename_desc);
 
+            std::cout<<"\t Writing Superneighbours to "<<(this->folder_dump+filename_nbr)<<std::endl;
+            writeMat(data->superpixel_neighbours,this->folder_dump+filename_nbr, "Neighbours");
+
             std::cout<<"\t Writing Annotations to "<<(this->folder_dump+filename_ann)<<std::endl;
             writeMat(data->annotation_indexed,this->folder_dump+filename_ann, "Ann");
 
             std::cout<<"\t Writing Images to "<<(this->folder_dump+filename_img)<<std::endl;
-            writeMat(data->annotation_indexed,this->folder_dump+filename_img, "Img");
+            writeMat(data->image,this->folder_dump+filename_img, "Img");
+
+
+            //Clearing data
+            data->superpixel_segments.release();
+            data->superpixel_neighbours.release();
+            data->image.release();
+            data->annotation_indexed.release();
+            data->annotation_orig.release();
+            data->descriptors_concat_pooled.release();
 
         }
 

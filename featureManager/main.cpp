@@ -32,6 +32,9 @@ int main()
     feat_names.push_back(cvc::FeatureList::LBP);
     cluster_counts.push_back(50);
 
+    feat_names.push_back(cvc::FeatureList::HOG);
+    cluster_counts.push_back(50);
+
 
     cvc::featureManager feats;
     feats.initFeatures(feat_names, cluster_counts);
