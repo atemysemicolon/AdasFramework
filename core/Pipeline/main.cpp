@@ -20,7 +20,7 @@ std::string svm_filename = "Camvid.svm";
 std::string descriptors_filename = "camvid_descriptors.xml";
 std::string dictionary_filename = "camvid_dictionary.xml";
 std::string weights_filename="camvid_weights.xml";
-std::string folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/train/";
+std::string folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/Train/";
 int number_superpixels=1000;
 //int dictionary_size = 200;
 
@@ -216,8 +216,8 @@ void initPipes()
     //Initializing FeatureManager
     std::vector<cvc::FeatureList> feat_names;
     std::vector<int> cluster_counts;
-    feat_names.push_back(cvc::FeatureList::SIFT);
-    cluster_counts.push_back(50);
+    //feat_names.push_back(cvc::FeatureList::SIFT);
+    //cluster_counts.push_back(50);
     feat_names.push_back(cvc::FeatureList::LBP);
     cluster_counts.push_back(50);
     feat_names.push_back(cvc::FeatureList::HOG);
@@ -336,18 +336,18 @@ int main(int ac, char *av[])
     {
         if(std::strcmp(av[1],"test")==0)
         {
-            folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/test/";
+            folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Test/";
             dataset->loadDataset(camvid, cvc::DatasetTypes::TEST);
         }
         else if(std::strcmp(av[1],"train")==0)
         {
-            folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/train/";
+            folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/";
              dataset->loadDataset(camvid, cvc::DatasetTypes::TRAIN);
         }
         else if(std::strcmp(av[1],"cluster")==0)
         {
             //CLuster = BOW + Cluster
-            folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/train/";
+            folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/";
              dataset->loadDataset(camvid, cvc::DatasetTypes::TRAIN);
              flag=true;
         }
