@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Apr  8 17:48:59 2015
+Created on Wed Apr  16 13:48:59 2015
 
 @author: prassanna
 """
@@ -18,8 +18,8 @@ from sklearn import ensemble,linear_model, svm, preprocessing
 from scipy.stats import mode
 
 
-folder_location = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/"
-folder_out ="/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Model/"
+folder_location = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Train/"
+folder_out ="/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Model/"
 ext_im = ".png_im.xml"
 ext_ann = ".png_ann.xml"
 ext_desc = ".png_desc.xml"
@@ -44,7 +44,8 @@ def listFiles(name_folder, extension):
     return sorted(filenames),sorted(filenames_stripped)
     
 def annImagetoLabels(ann_index_image, segments):
-    gt_labels = [int(mode(ann_index_image[segments==i],axis=None)[0][0]) for i in range(0,np.amax(segments)+1)]
+    gt_labels_temp = [ np.any(ann_index_image[segments==i])for i in range(0,np.amax(segments)+1)]
+    gt_labels = [int(mode(ann_index_image[segments==i],axis=None)[0][0]) if gt_labels_temp[i]==True else 11  for i in range(0,np.amax(segments)+1) ]
     return gt_labels
     
 filenames, filenames_desc =listFiles(folder_location, ext_desc); 
@@ -55,23 +56,19 @@ gt_global = list();
 desc_global = list();
 fnames  = list();
 for i in range(0,len(filenames_sup)):
-    try:
-        print i, "->", filenames_sup[i]; 
-        fnames.append(filenames_sup[i]);
-        segments = ocv.read_xml_file(folder_location+filenames_sup[i], "Segments")
-        desc = ocv.read_xml_file(folder_location+filenames_desc[i], "Descriptors")
-        ann = ocv.read_xml_file(folder_location+filenames_ann[i], "Ann")
-        gt_labels = annImagetoLabels(ann, segments);
-        gt_global.extend(gt_labels);
-        desc_global.append(desc);
-    except Exception as ex:
-        template = "An exception of type {0} occured. Arguments:\n{1!r}"
-        message = template.format(type(ex).__name__, ex.args)
-        print message
+    print i, "->", folder_location+filenames_sup[i]; 
+    fnames.append(filenames_sup[i]);
+    segments = ocv.read_xml_file(folder_location+filenames_sup[i], "Segments")
+    desc = ocv.read_xml_file(folder_location+filenames_desc[i], "Descriptors")
+    ann = ocv.read_xml_file(folder_location+filenames_ann[i], "Ann")
+    gt_labels = annImagetoLabels(ann, segments);
+    gt_global.extend(gt_labels);
+    desc_global.append(desc);
+
         
 
 n_states=12
-clf=ensemble.RandomForestClassifier(class_weight="auto", n_estimators = 50)
+clf=ensemble.RandomForestClassifier(class_weight="auto")
 #Now Making data look good
 imp=preprocessing.Imputer(missing_values='NaN',strategy='mean',axis=0)
 
@@ -82,25 +79,20 @@ X=imp.transform(X)
 cPickle.dump((X,gt_global,fnames), open(folder_out+"Data_unary_model.pkl","w"))
 del desc_global
 
-print "dumping imputer...."
-cPickle.dump(imp, open(folder_out+"imputer_unary_desc.pkl","w"))
+print "Saving imputer.."
+cPickle.dump(imp, open(folder_out+"imp_unary_model_only.pkl","w"))
+del imp
 
 print "fitting Random forest...."
 clf.fit(X,gt_global);
-cPickle.dump(clf, open(folder_out+"RF_unary_model.pkl","w"))
+cPickle.dump(clf, open(folder_out+"RF_unary_model_only.pkl","w"))
 del clf
+
 
 print "fitting Logisitic Regression...."
-clf = linear_model.LogisticRegression(class_weight="auto")
-clf.fit(X,gt_global)
-cPickle.dump(clf, open(folder_out+"LR_unary_model.pkl","w"))
-del clf
-
-print "fitting SVM...."
-clf = svm.SVC(class_weight="auto", kernel = "linear")
-clf.fit(X,gt_global)
-cPickle.dump(clf, open(folder_out+"SVM_unary_model.pkl","w"))
-del clf
-
+clf2 = linear_model.LogisticRegression(class_weight="auto")
+clf2.fit(X,gt_global)
+cPickle.dump(clf2, open(folder_out+"LR_unary_model_only.pkl","w"))
+del clf2
 
 print "Done!"

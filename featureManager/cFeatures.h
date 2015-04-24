@@ -36,6 +36,7 @@ public:
     cv::Ptr<cv::DescriptorMatcher> flannMatcher;
     int nr_superpixels;
     std::string ftname;
+    bool clusterCapable;
 
     
 
@@ -253,6 +254,7 @@ public:
         extractor = cv::Ptr<cv::DescriptorExtractor>(new cv::SiftDescriptorExtractor); //Opencv2
         this->length = 128;
         this->ftname = "SIFT";
+        this->clusterCapable = true;
 
     }
     ~SiftDescriptor()
@@ -390,6 +392,7 @@ public:
     {
         this->length = 3;
         this->ftname = "Color";
+        this->clusterCapable = true;
     }
     int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
     {
@@ -484,6 +487,7 @@ public:
     {
         this->length = 2;
         this->ftname = "Location";
+        this->clusterCapable = true;
     }
     int  calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
     {
@@ -572,6 +576,7 @@ class LBPDescriptor : public cFeatures
         {
             this->length = 256; //or255 last one could be zero-np
             this->ftname = "LBP";
+            this->clusterCapable = false;
         }
         bool withinRange(const cv::Mat &img, const cv::Point &p)
         {
@@ -579,6 +584,7 @@ class LBPDescriptor : public cFeatures
                 return true;
             return false;
         }
+
 
         cv::Mat feature_lbp(const cv::Mat &img)
         {
@@ -632,16 +638,42 @@ class LBPDescriptor : public cFeatures
             return superpixel_desc.clone();
         }
 
-
-        int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+        //Trying to bin LBP directly without BOW
+        cv::Mat superpixelLbp(std::vector<cv::Point> &pts, const cv::Mat &lbp_image)
         {
+            std::vector<cv::Point> lbp_pts;
+            //Holds difference
+            cv::Point p;
+            p.x=1;
+            p.y=1;
+            for(auto pt : pts)
+            {
+                cv::Point lbp_pt = pt-p;
+                if(withinRange(lbp_image, lbp_pt))
+                    lbp_pts.push_back(lbp_pt);
 
-//            cFeatures::loadSuperpixelCount(segments);
-//            cv::Mat lbp = feature_lbp(img);
-//            this->descriptors = feature_lbp_cluster(lbp, segments);
-//            lbp.release();
-//            return this->descriptors.rows;
+            }
 
+            cv::Mat superpixel_desc = cv::Mat::zeros(1, 256, CV_32FC1);
+            int c=0;
+            for(auto pt:lbp_pts)
+            {
+                    if(withinRange(lbp_image, pt))
+                    {
+                        int lbp_label = lbp_image.at<uchar>(pt);
+                        superpixel_desc.at<float>(0,lbp_label)+=1.0f;
+                        c++;
+                    }
+            }
+            if(c!=0)
+                superpixel_desc = superpixel_desc/c;
+
+            return superpixel_desc.clone();
+
+        }
+
+        int calculateDescriptorsForBOW(const cv::Mat &img, const cv::Mat &segments)
+        {
             cFeatures::loadSuperpixelCount(segments);
 
             //LBP Image
@@ -666,6 +698,38 @@ class LBPDescriptor : public cFeatures
             lbp_im.release();
             return this->descriptors.rows;
 
+        }
+        int calculateDescriptorsForNoBOW(const cv::Mat &img, const cv::Mat &segments)
+        {
+            cFeatures::loadSuperpixelCount(segments);
+
+            //LBP Image
+            cv::Mat lbp_im = feature_lbp(img);
+
+
+            cv::Mat desc = cv::Mat::zeros(this->nr_superpixels, 256, CV_32FC1);
+            //LBP Descriptor
+            for(int i =0;i<this->nr_superpixels;i++)
+            {
+                std::vector<cv::Point> pts;
+                pts = getPositions(i, segments);
+                cv::Mat d = superpixelLbp(pts,lbp_im);
+                if(d.empty())
+                    d=cv::Mat::zeros(1, 256, CV_32FC1);
+                d.copyTo(desc.row(i));
+            }
+
+            this->descriptors = desc.clone();
+            desc.release();
+            lbp_im.release();
+            return this->descriptors.rows;
+        }
+
+
+        int calculateDescriptors(const cv::Mat &img, const cv::Mat &segments)
+        {
+           int n = calculateDescriptorsForNoBOW(img, segments);
+           return n;
         }
 
         int calculateCodedDescriptor(const cv::Mat &img, const cv::Mat &segments)
@@ -708,6 +772,7 @@ public:
     {
         this->length=9;//?
         this->ftname = "HOG";
+        this->clusterCapable = true;
 
     }
     ~HOGDescriptor()

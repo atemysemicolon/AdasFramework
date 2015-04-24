@@ -223,6 +223,29 @@ public:
         return true;
     }
 
+    bool loadDatasetFromFiles(std::shared_ptr<generalDataset> dataset, DatasetTypes ds_type, std::string test_images_file,
+                              std::string train_images_file, std::string image_folder, std::string annotation_folder)
+    {
+        this->datasetObj = dataset;
+        dataset->loadDatasetFromFiles(test_images_file, train_images_file,
+                                      image_folder, annotation_folder);
+        if(ds_type==TRAIN)
+        {
+            files_images=dataset->files_images_train;
+            files_labels=dataset->files_labels_train;
+        }
+        else if (ds_type == TEST)
+        {
+            files_images=dataset->files_images_test;
+            files_labels=dataset->files_labels_test;
+        }
+        else
+            return false;
+
+        this->number_of_files = std::min(files_labels.size(), files_images.size());
+        return true;
+    }
+
 
     /**
      * @brief
@@ -313,6 +336,7 @@ public:
     {
         if(this->exists(0))
         {
+            std::cout<<"Loading :"<<this->files_labels[index.currentIndex()]<<std::endl;
 
             data_new.annotation_orig = cv::imread(this->files_labels[index.currentIndex()]);
             data_new.image = cv::imread(this->files_images[index.currentIndex()]);

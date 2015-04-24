@@ -17,11 +17,11 @@ from sklearn import preprocessing
 
 #Script to Output Probabilities from a trained classifier. Almost like test_unaries.
 
-file_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/RF_unary_model_only.pkl"
-file_svm = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/SVM_unary_model.pkl"
-file_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/LR_unary_model_only.pkl"
-file_imp= "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/imputer.pkl"
-folder_out = ["/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/unaries/RF/Train/", "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/unaries/LR/Train/"]
+file_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Model/RF_unary_model.pkl"
+file_svm = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Model/SVM_unary_model.pkl"
+file_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Model/LR_unary_model.pkl"
+#file_imp= "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/model/imputer.pkl"
+folder_out = ["/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/unaries/RF/Train/", "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/unaries/LR/Train/"]
 
 ext_im = ".png_im.xml"
 ext_ann = ".png_ann.xml"
@@ -30,12 +30,12 @@ ext_sup = ".png_sup.xml"
 
 #Load Classifier
 print "Loading Classifier....."
-imp =cPickle.load(open(file_imp,"r"));
 f = open(file_rf, "r");
-clf1 = cPickle.load(f);
+clf1,imp = cPickle.load(f);
 f.close()
+
 clf_svm =0 #cPickle.load(open(file_svm,"r"));
-clf_lr = cPickle.load(open(file_lr,"r"));
+clf_lr,imp = cPickle.load(open(file_lr,"r"));
 clfs = [clf1, clf_lr]#, clf_svm];
 
 #Helper functions
@@ -60,11 +60,7 @@ def annImagetoLabels(ann_index_image, segments):
     return gt_labels
     
 
-folder_in_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/test/predImages/RF/"
-folder_in_svm = 0#"/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/test/predImages/SVM/"
-folder_in_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/test/predImages/LR/"
-folder_locations = [folder_in_rf, folder_in_lr, folder_in_svm]
-folder_location = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/train/"
+folder_location = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/"
 
 #Getting filenames for Random Forests
 filenames, filenames_desc =listFiles(folder_location, ext_desc); 
@@ -75,7 +71,7 @@ gt_global = list();
 desc_global = list();
 
 
-for i in range(0,len(filenames_sup)):
+for i in range(0,1):#len(filenames_sup)):
     print i, "->", filenames_sup[i]; 
     for j in range(0,len(clfs)):
         print "On classifier : ",j

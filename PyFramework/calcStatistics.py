@@ -42,11 +42,11 @@ void_class_index=11;
 color_list = kitti_colors
 confusion_matrix = np.zeros((number_classes, number_classes))
 compute_for_void = 1; #***Imp 1->dont compute , 0->compute
-test_folder = '/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/crf/'
-gt_folder ='/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/test/'
-confusion_write_loc = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/results/";
+test_folder = '/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Test/predImages/RF/'
+gt_folder ='/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Test/'
+confusion_write_loc = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/results/";
 ext_gt = ".png_ann.xml"
-ext_test="_crf.xml" 
+ext_test="_test.png.xml" 
 ext_exclude = None;
 skip_last = 0; 
 #Number of images to not calculate. 

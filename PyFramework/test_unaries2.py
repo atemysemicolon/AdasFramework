@@ -19,13 +19,13 @@ import glob
 from sklearn import ensemble
 from scipy.stats import mode
 
-folder_location = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/test/"
-folder_out_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/test/predImages/RF/"
-folder_out_svm = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/test/predImages/SVM/"
-folder_out_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/test/predImages/LR/"
-file_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/RF_unary_model_only.pkl"
-file_svm = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/SVM_unary_model.pkl"
-file_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/LR_unary_model_only.pkl"
+folder_location = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Test/"
+folder_out_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Test/predImages/RF/"
+folder_out_svm = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Test/predImages/SVM/"
+folder_out_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Test/predImages/LR/"
+file_rf = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Model/RF_unary_model_only.pkl"
+file_svm = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Model/SVM_unary_model.pkl"
+file_lr = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Model/LR_unary_model_only.pkl"
 ext_im = ".png_im.xml"
 ext_ann = ".png_ann.xml"
 ext_desc = ".png_desc.xml"
@@ -58,16 +58,16 @@ dataset_colours  = kitti_colors
 
 #Load Classifier
 print "Loading Classifier....."
-imp = cPickle.load(open("/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/model/imputer.pkl", "r"))
+imp = cPickle.load(open("/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump5/Model/imp_unary_model_only.pkl", "r"))
 f = open(file_rf, "r");
 clf_rf = cPickle.load(f);
 f.close();
 
 clf_svm = 0#cPickle.load(open(file_svm,"r"));
-clf_lr = 0#cPickle.load(open(file_lr,"r"));
+clf_lr = cPickle.load(open(file_lr,"r"));
 print "Done Loading."
 
-clfs = (clf_rf,clf_lr,clf_svm);
+clfs = (clf_rf,clf_lr)#,clf_svm);
 folder_outs = (folder_out_rf, folder_out_lr, folder_out_svm);
 
 #Helper functions
@@ -125,7 +125,7 @@ for i in range(0,len(filenames_sup)):
     print "Transforming.."    
     desc = imp.transform(desc)
     print "Predicting.."
-    for k in range(0,1):#len(clfs)):
+    for k in range(0,len(clfs)):
         clf = clfs[k]
         folder_out = folder_outs[k]
         pred_labels = clf.predict(desc);

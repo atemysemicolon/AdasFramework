@@ -20,7 +20,7 @@ std::string svm_filename = "Camvid.svm";
 std::string descriptors_filename = "camvid_descriptors.xml";
 std::string dictionary_filename = "camvid_dictionary.xml";
 std::string weights_filename="camvid_weights.xml";
-std::string folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump3/Train/";
+std::string folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/";
 int number_superpixels=1000;
 //int dictionary_size = 200;
 
@@ -34,7 +34,7 @@ std::shared_ptr<cvc::cDataset> dataset(new cvc::cDataset);
 //std::shared_ptr<cvc::KittiDataset> kitti(new cvc::KittiDataset);
 std::shared_ptr<cvc::CamVidDataset> camvid(new cvc::CamVidDataset);
 //std::shared_ptr<cvc::ClassData> kitti_dt(new cvc::KittiClassData);
-std::shared_ptr<cvc::ClassData> camvid_dt(new cvc::CamVidClassData);
+std::shared_ptr<cvc::ClassData> camvid_dt(new cvc::KittiClassData);
 std::vector<std::shared_ptr<cvc::cPipeModule>> pipes;
 
 std::shared_ptr<cvc::annotatonManager> ann(new cvc::annotatonManager);
@@ -228,6 +228,7 @@ void initPipes()
     cluster_counts.push_back(25);
 
     feat->initFeatures(feat_names,cluster_counts);
+    feat->setContextDescriptors(true);
 
     progressify->initFolderLocation(folder_dump);
 
@@ -250,6 +251,7 @@ void genClusters()
 
 
         std::cout<<"On Image : "<<++i<<std::endl;
+
     dataset->load(*data);
     if(i==53)
     {
@@ -325,6 +327,7 @@ void genFeatures()
 
 }
 
+
 int main(int ac, char *av[])
 {
 
@@ -337,18 +340,30 @@ int main(int ac, char *av[])
         if(std::strcmp(av[1],"test")==0)
         {
             folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Test/";
-            dataset->loadDataset(camvid, cvc::DatasetTypes::TEST);
+            //dataset->loadDataset(camvid, cvc::DatasetTypes::TEST);
+            dataset->loadDatasetFromFiles(camvid, cvc::DatasetTypes::TEST,"/home/prassanna/Development/Datasets/CamVid_small/train.txt",
+                                 "/home/prassanna/Development/Datasets/CamVid_small/test.txt",
+                                 "/home/prassanna/Development/Datasets/CamVid_small/Images/",
+                                 "/home/prassanna/Development/Datasets/CamVid_small/Annotations/");
         }
         else if(std::strcmp(av[1],"train")==0)
         {
             folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/";
-             dataset->loadDataset(camvid, cvc::DatasetTypes::TRAIN);
+             //dataset->loadDataset(camvid, cvc::DatasetTypes::TRAIN);
+             dataset->loadDatasetFromFiles(camvid, cvc::DatasetTypes::TRAIN,"/home/prassanna/Development/Datasets/CamVid_small/train.txt",
+                                  "/home/prassanna/Development/Datasets/CamVid_small/test.txt",
+                                  "/home/prassanna/Development/Datasets/CamVid_small/Images/",
+                                  "/home/prassanna/Development/Datasets/CamVid_small/Annotations/");
         }
         else if(std::strcmp(av[1],"cluster")==0)
         {
             //CLuster = BOW + Cluster
             folder_dump = "/home/prassanna/Development/workspace/CamVid_scripts/FrameworkDump4/Train/";
-             dataset->loadDataset(camvid, cvc::DatasetTypes::TRAIN);
+             //dataset->loadDataset(camvid, cvc::DatasetTypes::TRAIN);
+            dataset->loadDatasetFromFiles(camvid, cvc::DatasetTypes::TRAIN,"/home/prassanna/Development/Datasets/CamVid_small/train.txt",
+                                 "/home/prassanna/Development/Datasets/CamVid_small/test.txt",
+                                 "/home/prassanna/Development/Datasets/CamVid_small/Images/",
+                                 "/home/prassanna/Development/Datasets/CamVid_small/Annotations/");
              flag=true;
         }
 
@@ -357,6 +372,10 @@ int main(int ac, char *av[])
     if(!dataset)
     {
          dataset->loadDataset(camvid, cvc::DatasetTypes::TEST);
+         dataset->loadDatasetFromFiles(camvid, cvc::DatasetTypes::TEST,"/home/prassanna/Development/Datasets/CamVid_small/train.txt",
+                              "/home/prassanna/Development/Datasets/CamVid_small/test.txt",
+                              "/home/prassanna/Development/Datasets/CamVid_small/Images/",
+                              "/home/prassanna/Development/Datasets/CamVid_small/Annotations/");
          cout<<"Loading Test dataset"<<std::endl;
     }
      initPipes();

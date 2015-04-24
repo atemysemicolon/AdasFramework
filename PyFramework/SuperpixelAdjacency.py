@@ -10,7 +10,7 @@ import opencv_utils as ocv
 import itertools
 from scipy.stats import mode
 
-bias_energy=0.2
+bias_energy=0.8
 
 def PySuperpixelNeibhours(nbrs):
     nbrs_dict = dict();

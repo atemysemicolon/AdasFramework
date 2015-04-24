@@ -28,6 +28,7 @@ public:
     cv::Mat descriptors_concatenated;
     bool to_bow_descriptor;
     std::string folder_cache;
+    bool contextCapable;
     
 
     
@@ -39,13 +40,21 @@ public:
         {
             for(int i = 0;i<features_ptr.size();i++)
             {
-                this->features_ptr[i]->computeBOW();
-                std::cout<<"Writing to cache.."<<std::endl;
-                std::string filenm=folder_cache +"ftno_"+ this->features_ptr[i]->ftname + "_dict.xml";
-                this->features_ptr[i]->saveDictionary(filenm);
+                if(this->features_ptr[i]->clusterCapable)
+                {
+                    this->features_ptr[i]->computeBOW();
+                    std::cout<<"Writing to cache.."<<std::endl;
+                    std::string filenm=folder_cache +"ftno_"+ this->features_ptr[i]->ftname + "_dict.xml";
+                    this->features_ptr[i]->saveDictionary(filenm);
+                }
             }
         }
 
+    }
+
+    void setContextDescriptors(bool option)
+    {
+        this->contextCapable=option;
     }
 
     void clearFeatures()
@@ -61,8 +70,11 @@ public:
     {
         for(int i = 0;i<features_ptr.size();i++)
         {
-            std::string filenm=folder_cache +"ftno_"+ this->features_ptr[i]->ftname + "_dict.xml";
-            this->features_ptr[i]->loadDictionary(filenm);
+            if(this->features_ptr[i]->clusterCapable)
+            {
+                std::string filenm=folder_cache +"ftno_"+ this->features_ptr[i]->ftname + "_dict.xml";
+                this->features_ptr[i]->loadDictionary(filenm);
+            }
         }
 
         this->to_bow_descriptor=true;
@@ -132,11 +144,21 @@ public:
         else
             for(int i=0;i<this->features_ptr.size();i++)
             {
-                std::cout<<"Calculating Descriptor : "<<this->features_ptr[i]->ftname<<std::endl;
-                int n = this->features_ptr[i]->calculateCodedDescriptor(img, segments);
+                if(this->features_ptr[i]->clusterCapable)
+                {
+                    std::cout<<"Calculating Clustered Descriptor : "<<this->features_ptr[i]->ftname<<std::endl;
+                    int n = this->features_ptr[i]->calculateCodedDescriptor(img, segments);
+                    row_sizes.push_back(n);
+                }
+                else
+                {
+                    std::cout<<"Calculating Unclustered Descriptor : "<<this->features_ptr[i]->ftname<<std::endl;
+                    int n = this->features_ptr[i]->calculateDescriptors(img, segments);
+                    row_sizes.push_back(n);
+
+                }
                 //std::cout<<this->features_ptr[i]->descriptors<<std::endl;
                 //std::cout<<"\t Size of Features(data/ptr) ->"<<i<<" : "<<sizeof(*this->features_ptr[i])<<","<<sizeof(this->features_ptr[i])<<std::endl;
-                row_sizes.push_back(n);
             }
         int elem =row_sizes[0];
         for(int i = 1;i<row_sizes.size();i++)
@@ -154,6 +176,7 @@ public:
     void storeDescriptor()
     {
         for(int i=0;i<this->features_ptr.size();i++)
+            if(this->features_ptr[i]->clusterCapable)
                 this->features_ptr[i]->pushAndCollectDescriptor(true);
     }
 
@@ -180,12 +203,14 @@ public:
         lengths.push_back(0);
         for(int i=0;i<this->features_ptr.size();i++)
         {
-            l+=this->features_ptr[i]->dictionary.rows;
+
             n=this->features_ptr[i]->nr_superpixels;
-            lengths.push_back(this->features_ptr[i]->dictionary.rows);
+
+            lengths.push_back(this->features_ptr[i]->descriptors.cols);
+            l+=this->features_ptr[i]->descriptors.cols;
             //std::cout<<this->features_ptr[i]->descriptors;
         }
-
+        std::cout<<"Concatenating.."<<std::endl;
         cv::Mat concatenated_descriptor = cv::Mat::zeros(n,l, CV_32FC1);
         for(int f = 0;f<this->features_ptr.size();f++)
         {
@@ -196,7 +221,61 @@ public:
         this->descriptors_concatenated = concatenated_descriptor.clone();
         concatenated_descriptor.release();
 
-        std::cout<<"Dimensions of final desc are : "<<this->descriptors_concatenated.rows<<", "<<this->descriptors_concatenated.cols<<std::endl;
+
+
+    }
+
+    void addContextualDescriptor(const cv::Mat &nbrs, const cv::Mat &segments)
+    {
+        std::cout<<"Adding contextual Descriptors"<<std::endl;
+        cv::Mat descriptor_right=cv::Mat::zeros(this->descriptors_concatenated.rows,
+                                                this->descriptors_concatenated.cols,
+                                                CV_32FC1); //The descriptor to be concatenated to each descriptor
+
+        cv::Mat descriptor_left = this->descriptors_concatenated;
+        std::vector<int> sup_sizes;
+        const int initVal=-1;
+        sup_sizes.resize(this->descriptors_concatenated.rows, initVal);
+
+        //Iterate through all superpixels
+        for(int i=0;i<this->features_ptr[0]->nr_superpixels;i++)
+        {
+            cv::Mat nbrs_i = nbrs.row(i);
+            int j=0;
+            int nbrhood_size=0;
+            cv::Mat desc = cv::Mat::zeros(1,descriptor_left.cols, CV_32FC1);
+            //std::cout<<"\tSuperpixel number : "<<i<<":-"<<std::endl;
+            //Iterate through each neighbour
+            while(nbrs_i.at<int>(0,j)>=0)
+            {
+
+                cv::Mat sup_descriptor;
+                int nbr_sup = nbrs_i.at<int>(0,j);
+                //std::cout<<"\t\tNbr:"<<nbr_sup<<std::endl;
+                j++;
+                sup_descriptor=descriptor_left.row(nbr_sup);
+
+                if(sup_sizes[nbr_sup]<0)
+                    sup_sizes[nbr_sup] = this->features_ptr[0]->getPositions(nbr_sup,segments).size();
+
+                sup_descriptor*=sup_sizes[nbr_sup];
+                nbrhood_size +=sup_sizes[nbr_sup];
+
+                desc+=sup_descriptor;
+
+
+            }
+            if(nbrhood_size>0)
+                desc/=(2*nbrhood_size);
+            else
+                desc/=2;
+            //std::cout<<"Generated Descriptor"<<desc<<std::endl;
+            desc.copyTo(descriptor_right.row(i));
+
+        }
+
+        cv::hconcat(this->descriptors_concatenated, descriptor_right, this->descriptors_concatenated);
+
 
     }
 
@@ -213,10 +292,15 @@ public:
         if(nr_rows==data->gt_label.size() && nr_rows>0)
         {
             if(to_bow_descriptor)
+            {
                 concatDescriptors();
+                if(this->contextCapable)
+                    addContextualDescriptor(data->superpixel_neighbours, data->superpixel_segments);
+            }
             else
                 storeDescriptor();
             data->descriptors_concat_pooled = this->descriptors_concatenated.clone();
+            std::cout<<"Dimensions of final desc are : "<<this->descriptors_concatenated.rows<<", "<<this->descriptors_concatenated.cols<<std::endl;
             //std::cout<<data->descriptors_concat_pooled<<std::endl;// All 0s here
         }
 
